@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exportador de Cards</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      font-family: 'Sora', sans-serif;
+    }
+
+    .card-texto {
+      font-family: 'Sora', sans-serif;
+      font-weight: 700;
+      font-size: 38px;
+      max-width: 70%;
+      text-align: center;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+
+<body class="bg-white text-[#494949] min-h-screen flex flex-col items-center">
+
+  <!-- Header -->
+  <header class="sticky top-0  w-full z-50 bg-[#6900f2] text-white p-4 flex flex-col gap-4 items-center">
+  <div class="flex items-center gap-2">
+    <a href="index.html">
+      <img class="w-[125px]" src="/images/logo-revizzei.webp" alt="Logo Revizzei">
+    </a>
+  </div>
+</header>
+
+  <!-- Formulário -->
+  <main class="flex flex-col gap-8 p-6 w-full max-w-4xl">
+
+    <div class="grid md:grid-cols-2 gap-6">
+      <div>
+        <label class="font-semibold block mb-2">Imagem da Frente:</label>
+        <input type="file" id="imgFrente" accept="image/*" class="w-full border rounded-md p-2" />
+      </div>
+      <div>
+        <label class="font-semibold block mb-2">Imagem do Verso:</label>
+        <input type="file" id="imgVerso" accept="image/*" class="w-full border rounded-md p-2" />
+      </div>
+    </div>
+
+    <div class="bg-gray-100 p-6 rounded shadow-md">
+      <label class="block font-semibold mb-2">Texto da Frente (1 por linha):</label>
+      <textarea class="frente-input w-full border rounded-md p-3 resize-none text-sm" rows="10"></textarea>
+
+      <label class="block font-semibold mt-6 mb-2">Texto do Verso (1 por linha):</label>
+      <textarea class="verso-input w-full border rounded-md p-3 resize-none text-sm" rows="10"></textarea>
+    </div>
+
+    <button id="btnExportar" disabled onclick="exportarPDFs()"
+      class="bg-[#6900f2] text-white px-6 py-3 rounded font-semibold opacity-50 hover:bg-[#5a00d1] transition-all">
+      Exportar PDFs Separados
+    </button>
+
+  </main>
+
+  <div id="render-area" style="position:absolute; left:-9999px; top:0;"></div>
+
+  <!-- Footer -->
+  <footer class="bg-gray-800 text-white w-full text-center p-6 mt-auto">
+    <h3 class="text-xl font-bold">Revizzei</h3>
+    <p class="text-sm mt-2">Todos os direitos reservados &copy; 2025</p>
+  </footer>
+
+  <script>
+    let imagemFrente = null;
+    let imagemVerso = null;
+
+    const btn = document.getElementById('btnExportar');
+
+    function lerImagem(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        if (file.type === 'image/svg+xml') {
+          reader.onload = () => resolve({ type: 'svg', content: reader.result });
+          reader.readAsText(file);
+        } else {
+          reader.onload = () => resolve({ type: 'img', content: reader.result });
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
+    document.getElementById('imgFrente').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      imagemFrente = await lerImagem(file);
+      checkReady();
+    });
+
+    document.getElementById('imgVerso').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      imagemVerso = await lerImagem(file);
+      checkReady();
+    });
+
+    function checkReady() {
+      if (imagemFrente && imagemVerso) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+      }
+    }
+
+    function criarCard(texto, imagem, corTexto) {
+      const wrapper = document.createElement('div');
+      wrapper.style.position = 'relative';
+      wrapper.style.width = '600px';
+      wrapper.style.height = '850px';
+      wrapper.style.overflow = 'hidden';
+      wrapper.style.display = 'flex';
+      wrapper.style.alignItems = 'center';
+      wrapper.style.justifyContent = 'center';
+      wrapper.style.backgroundColor = '#fff';
+
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.top = '0';
+      container.style.left = '0';
+      container.style.width = '600px';
+      container.style.height = '850px';
+      container.style.overflow = 'hidden';
+      container.style.zIndex = '0';
+
+      if (imagem.type === 'svg') {
+        const div = document.createElement('div');
+        div.innerHTML = imagem.content;
+        const svg = div.querySelector('svg');
+        if (svg) {
+          svg.setAttribute('width', '600');
+          svg.setAttribute('height', '850');
+          svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+          svg.style.width = '100%';
+          svg.style.height = '100%';
+          svg.style.display = 'block';
+          container.appendChild(svg);
+        }
+      } else {
+        const img = document.createElement('img');
+        img.src = imagem.content;
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'contain';
+        img.style.objectPosition = 'center';
+        container.appendChild(img);
+      }
+
+      const span = document.createElement('span');
+      span.className = 'card-texto';
+      span.style.position = 'relative';
+      span.style.color = corTexto;
+      span.style.zIndex = '10';
+      span.style.textAlign = 'center';
+      span.innerHTML = texto;
+
+      wrapper.appendChild(container);
+      wrapper.appendChild(span);
+
+      return wrapper;
+    }
+
+    async function exportarPDFs() {
+      const { jsPDF } = window.jspdf;
+
+      const perguntas = document.querySelector('.frente-input').value.trim().split('\n').filter(l => l.trim());
+      const respostas = document.querySelector('.verso-input').value.trim().split('\n').filter(l => l.trim());
+
+      if (!perguntas.length || !respostas.length) {
+        alert("Preencha ao menos uma pergunta e uma resposta.");
+        return;
+      }
+
+      const renderArea = document.getElementById('render-area');
+      renderArea.innerHTML = '';
+
+      const total = Math.min(perguntas.length, respostas.length);
+      const imagensFrente = [];
+      const imagensVerso = [];
+
+      const largura = 600;
+      const altura = 850;
+      const escala = 3;
+      const pdfW = largura * escala;
+      const pdfH = altura * escala;
+
+      for (let i = 0; i < total; i++) {
+        const frente = criarCard(perguntas[i], imagemFrente, '#7000ed');
+        renderArea.appendChild(frente);
+        const canvasFrente = await html2canvas(frente, {
+          width: largura,
+          height: altura,
+          scale: escala,
+          windowWidth: largura,
+          windowHeight: altura
+        });
+        imagensFrente.push(canvasFrente);
+
+        const verso = criarCard(respostas[i], imagemVerso, '#ffffff');
+        renderArea.appendChild(verso);
+        const canvasVerso = await html2canvas(verso, {
+          width: largura,
+          height: altura,
+          scale: escala,
+          windowWidth: largura,
+          windowHeight: altura
+        });
+        imagensVerso.push(canvasVerso);
+      }
+
+      const frentePdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH] });
+      const versoPdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH] });
+
+      imagensFrente.forEach((canvas, i) => {
+        if (i > 0) frentePdf.addPage([pdfW, pdfH]);
+        const imgData = canvas.toDataURL('image/png');
+        frentePdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+      });
+
+      imagensVerso.slice().reverse().forEach((canvas, i) => {
+        if (i > 0) versoPdf.addPage([pdfW, pdfH]);
+        const imgData = canvas.toDataURL('image/png');
+        versoPdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+      });
+
+      frentePdf.save('cards_frente.pdf');
+      versoPdf.save('cards_verso.pdf');
+    }
+  </script>
+
+</html>
