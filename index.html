@@ -18,30 +18,34 @@
     .card-texto {
       font-family: 'Sora', sans-serif;
       font-weight: 700;
-      font-size: 38px;
-      max-width: 70%;
+      font-size: 32px;
+      max-width: 80%;
       text-align: center;
       word-wrap: break-word;
       white-space: pre-wrap;
-      line-height: 1.5;
+      line-height: 1.0;
+      outline: none;
+    }
+
+    .preview-card span[contenteditable]:focus {
+      outline: 2px dashed #6900f2;
+      background: rgba(105, 0, 242, 0.05);
     }
   </style>
 </head>
 
 <body class="bg-white text-[#494949] min-h-screen flex flex-col items-center">
 
-  <!-- Header -->
   <header class="sticky top-0  w-full z-50 bg-[#6900f2] text-white p-4 flex flex-col gap-4 items-center">
-  <div class="flex items-center gap-2">
-    <a href="index.html">
-      <img class="w-[125px]" src="/images/logo-revizzei.webp" alt="Logo Revizzei">
-    </a>
-  </div>
-</header>
+    <div class="flex items-center gap-2">
+      <a href="index.html">
+        <img class="w-[125px]" src="/images/logo-revizzei.webp" alt="Logo Revizzei">
+      </a>
+    </div>
+  </header>
 
-  <!-- Formulário -->
-  <main class="flex flex-col gap-8 p-6 w-full max-w-4xl">
 
+  <main class="flex flex-col gap-6 p-6 w-full max-w-6xl">
     <div class="grid md:grid-cols-2 gap-6">
       <div>
         <label class="font-semibold block mb-2">Imagem da Frente:</label>
@@ -61,25 +65,26 @@
       <textarea class="verso-input w-full border rounded-md p-3 resize-none text-sm" rows="10"></textarea>
     </div>
 
-    <button id="btnExportar" disabled onclick="exportarPDFs()"
-      class="bg-[#6900f2] text-white px-6 py-3 rounded font-semibold opacity-50 hover:bg-[#5a00d1] transition-all">
-      Exportar PDFs Separados
-    </button>
+    <div class="flex gap-4">
+      <button onclick="visualizarCards()"
+        class="bg-yellow-500 text-white px-6 py-3 rounded font-semibold hover:bg-yellow-600 transition-all">
+        Visualizar Prévia dos Cards
+      </button>
 
+      <button id="btnExportar" disabled onclick="exportarPDFs()"
+        class="bg-[#6900f2] text-white px-6 py-3 rounded font-semibold opacity-50 hover:bg-[#5a00d1] transition-all">
+        Exportar PDFs Separados
+      </button>
+    </div>
   </main>
 
-  <div id="render-area" style="position:absolute; left:-9999px; top:0;"></div>
+  <section id="preview-area" class="w-full flex flex-wrap justify-center gap-6 px-6 py-10"></section>
 
-  <!-- Footer -->
-  <footer class="bg-gray-800 text-white w-full text-center p-6 mt-auto">
-    <h3 class="text-xl font-bold">Revizzei</h3>
-    <p class="text-sm mt-2">Todos os direitos reservados &copy; 2025</p>
-  </footer>
+  <div id="render-area" style="position:absolute; left:-9999px; top:0;"></div>
 
   <script>
     let imagemFrente = null;
     let imagemVerso = null;
-
     const btn = document.getElementById('btnExportar');
 
     function lerImagem(file) {
@@ -116,7 +121,7 @@
       }
     }
 
-    function criarCard(texto, imagem, corTexto) {
+    function criarCard(texto, imagem, corTexto, isPreview = false) {
       const wrapper = document.createElement('div');
       wrapper.style.position = 'relative';
       wrapper.style.width = '600px';
@@ -159,86 +164,200 @@
         container.appendChild(img);
       }
 
-      const span = document.createElement('span');
-      span.className = 'card-texto';
-      span.style.position = 'relative';
-      span.style.color = corTexto;
-      span.style.zIndex = '10';
-      span.style.textAlign = 'center';
-      span.innerHTML = texto;
+      const textoEl = isPreview ? document.createElement('div') : document.createElement('span');
+      textoEl.className = 'card-texto';
+      textoEl.style.position = 'relative';
+      textoEl.style.color = corTexto;
+      textoEl.style.zIndex = '10';
+      textoEl.style.textAlign = 'center';
+      textoEl.contentEditable = isPreview;
+      textoEl.innerText = texto;
 
       wrapper.appendChild(container);
-      wrapper.appendChild(span);
+      wrapper.appendChild(textoEl);
 
       return wrapper;
     }
 
-    async function exportarPDFs() {
-      const { jsPDF } = window.jspdf;
 
-      const perguntas = document.querySelector('.frente-input').value.trim().split('\n').filter(l => l.trim());
-      const respostas = document.querySelector('.verso-input').value.trim().split('\n').filter(l => l.trim());
+    function visualizarCards() {
+      const frente = document.querySelector('.frente-input').value.trim().split('\n').filter(l => l.trim());
+      const verso = document.querySelector('.verso-input').value.trim().split('\n').filter(l => l.trim());
 
-      if (!perguntas.length || !respostas.length) {
-        alert("Preencha ao menos uma pergunta e uma resposta.");
-        return;
-      }
-
-      const renderArea = document.getElementById('render-area');
-      renderArea.innerHTML = '';
-
-      const total = Math.min(perguntas.length, respostas.length);
-      const imagensFrente = [];
-      const imagensVerso = [];
-
-      const largura = 600;
-      const altura = 850;
-      const escala = 3;
-      const pdfW = largura * escala;
-      const pdfH = altura * escala;
+      const total = Math.min(frente.length, verso.length);
+      const preview = document.getElementById('preview-area');
+      preview.innerHTML = '';
 
       for (let i = 0; i < total; i++) {
-        const frente = criarCard(perguntas[i], imagemFrente, '#7000ed');
-        renderArea.appendChild(frente);
-        const canvasFrente = await html2canvas(frente, {
-          width: largura,
-          height: altura,
-          scale: escala,
-          windowWidth: largura,
-          windowHeight: altura
-        });
-        imagensFrente.push(canvasFrente);
+        const cardFrente = criarCard(frente[i], imagemFrente, '#7000ed', true);
+        const cardVerso = criarCard(verso[i], imagemVerso, '#ffffff', true);
 
-        const verso = criarCard(respostas[i], imagemVerso, '#ffffff');
-        renderArea.appendChild(verso);
-        const canvasVerso = await html2canvas(verso, {
-          width: largura,
-          height: altura,
-          scale: escala,
-          windowWidth: largura,
-          windowHeight: altura
-        });
-        imagensVerso.push(canvasVerso);
+        // Escala para visualização
+        cardFrente.style.transform = 'scale(0.45)';
+        cardFrente.style.transformOrigin = 'top center';
+        cardVerso.style.transform = 'scale(0.45)';
+        cardVerso.style.transformOrigin = 'top center';
+
+        const bloco = document.createElement('div');
+        bloco.className = 'flex flex-col gap-4 items-center';
+        bloco.innerHTML = `<p class="mb-2 font-semibold">Card ${i + 1}</p>`;
+        bloco.appendChild(cardFrente);
+        bloco.appendChild(cardVerso);
+
+        preview.appendChild(bloco);
       }
-
-      const frentePdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH] });
-      const versoPdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH] });
-
-      imagensFrente.forEach((canvas, i) => {
-        if (i > 0) frentePdf.addPage([pdfW, pdfH]);
-        const imgData = canvas.toDataURL('image/png');
-        frentePdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
-      });
-
-      imagensVerso.slice().reverse().forEach((canvas, i) => {
-        if (i > 0) versoPdf.addPage([pdfW, pdfH]);
-        const imgData = canvas.toDataURL('image/png');
-        versoPdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
-      });
-
-      frentePdf.save('cards_frente.pdf');
-      versoPdf.save('cards_verso.pdf');
     }
+
+
+//Exportação em PNG 
+
+// async function exportarPDFs() {
+//   const { jsPDF } = window.jspdf;
+
+//   const renderArea = document.getElementById('render-area');
+//   renderArea.innerHTML = '';
+
+//   const preview = document.getElementById('preview-area');
+//   const blocos = preview.querySelectorAll('.flex.flex-col');
+
+//   if (blocos.length === 0) {
+//     alert("Nenhum card visualizado para exportar.");
+//     return;
+//   }
+
+//   const imagensFrente = [];
+//   const imagensVerso = [];
+
+//   const largura = 600;
+//   const altura = 850;
+//   const escala = 3;
+//   const pdfW = largura * escala;
+//   const pdfH = altura * escala;
+
+// for (let bloco of blocos) {
+//   const textos = bloco.querySelectorAll('.card-texto');
+//   if (textos.length < 2) continue;
+
+//   const frenteTexto = textos[0].innerText.trim();
+//   const versoTexto = textos[1].innerText.trim();
+
+//   const frente = criarCard(frenteTexto, imagemFrente, '#7000ed');
+//   renderArea.appendChild(frente);
+//   const canvasFrente = await html2canvas(frente, {
+//     width: largura,
+//     height: altura,
+//     scale: escala,
+//     windowWidth: largura,
+//     windowHeight: altura
+//   });
+//   imagensFrente.push(canvasFrente);
+
+//   const verso = criarCard(versoTexto, imagemVerso, '#ffffff');
+//   renderArea.appendChild(verso);
+//   const canvasVerso = await html2canvas(verso, {
+//     width: largura,
+//     height: altura,
+//     scale: escala,
+//     windowWidth: largura,
+//     windowHeight: altura
+//   });
+//   imagensVerso.push(canvasVerso);
+// }
+
+//   const frentePdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH] });
+//   const versoPdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH] });
+
+//   imagensFrente.forEach((canvas, i) => {
+//     if (i > 0) frentePdf.addPage([pdfW, pdfH]);
+//     frentePdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pdfW, pdfH);
+//   });
+
+//   imagensVerso.slice().reverse().forEach((canvas, i) => {
+//     if (i > 0) versoPdf.addPage([pdfW, pdfH]);
+//     versoPdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pdfW, pdfH);
+//   });
+
+//   frentePdf.save('cards_frente.pdf');
+//   versoPdf.save('cards_verso.pdf');
+// }
+
+
+
+
+//Exportação em jpg
+
+async function exportarPDFs() {
+  const { jsPDF } = window.jspdf;
+
+  const renderArea = document.getElementById('render-area');
+  renderArea.innerHTML = '';
+
+  const preview = document.getElementById('preview-area');
+  const blocos = preview.querySelectorAll('.flex.flex-col');
+
+  if (blocos.length === 0) {
+    alert("Nenhum card visualizado para exportar.");
+    return;
+  }
+
+  const imagensFrente = [];
+  const imagensVerso = [];
+
+  const largura = 600;
+  const altura = 850;
+  const escala = 3;
+  const pdfW = largura * escala;
+  const pdfH = altura * escala;
+
+for (let bloco of blocos) {
+  const textos = bloco.querySelectorAll('.card-texto');
+  if (textos.length < 2) continue;
+
+  const frenteTexto = textos[0].innerText.trim();
+  const versoTexto = textos[1].innerText.trim();
+
+  const frente = criarCard(frenteTexto, imagemFrente, '#7000ed');
+  renderArea.appendChild(frente);
+  const canvasFrente = await html2canvas(frente, {
+    width: largura,
+    height: altura,
+    scale: escala,
+    windowWidth: largura,
+    windowHeight: altura
+  });
+  imagensFrente.push(canvasFrente);
+
+  const verso = criarCard(versoTexto, imagemVerso, '#ffffff');
+  renderArea.appendChild(verso);
+  const canvasVerso = await html2canvas(verso, {
+    width: largura,
+    height: altura,
+    scale: escala,
+    windowWidth: largura,
+    windowHeight: altura
+  });
+  imagensVerso.push(canvasVerso);
+}
+
+const frentePdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH], compress: true });
+const versoPdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH], compress: true });
+
+
+  imagensFrente.forEach((canvas, i) => {
+    if (i > 0) frentePdf.addPage([pdfW, pdfH]);
+    frentePdf.addImage(canvas, 'JPEG', 0, 0, pdfW, pdfH, undefined, 'FAST');
+  });
+
+  imagensVerso.slice().reverse().forEach((canvas, i) => {
+    if (i > 0) versoPdf.addPage([pdfW, pdfH]);
+    versoPdf.addImage(canvas, 'JPEG', 0, 0, pdfW, pdfH, undefined, 'FAST');
+  });
+
+  frentePdf.save('cards_frente.pdf');
+  versoPdf.save('cards_verso.pdf');
+}
+
   </script>
+</body>
 
 </html>
