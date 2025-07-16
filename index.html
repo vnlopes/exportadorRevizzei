@@ -345,12 +345,12 @@ const versoPdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH], compress: true })
 
   imagensFrente.forEach((canvas, i) => {
     if (i > 0) frentePdf.addPage([pdfW, pdfH]);
-    frentePdf.addImage(canvas, 'JPEG', 0, 0, pdfW, pdfH, undefined, 'FAST');
+    frentePdf.addImage(canvas, 'JPEG', 0, 0, pdfW, pdfH, undefined, 'MEDIUM');
   });
 
   imagensVerso.slice().reverse().forEach((canvas, i) => {
     if (i > 0) versoPdf.addPage([pdfW, pdfH]);
-    versoPdf.addImage(canvas, 'JPEG', 0, 0, pdfW, pdfH, undefined, 'FAST');
+    versoPdf.addImage(canvas, 'JPEG', 0, 0, pdfW, pdfH, undefined, 'MEDIUM');
   });
 
   frentePdf.save('cards_frente.pdf');
