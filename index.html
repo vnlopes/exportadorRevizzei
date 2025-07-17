@@ -18,7 +18,7 @@
     .card-texto {
       font-family: 'Sora', sans-serif;
       font-weight: 700;
-      font-size: 32px;
+      font-size: 50px;
       max-width: 80%;
       text-align: center;
       word-wrap: break-word;
@@ -35,15 +35,64 @@
 </head>
 
 <body class="bg-white text-[#494949] min-h-screen flex flex-col items-center">
+  
+  <script>
+    const senhaCorreta = 'R3v1zze1ç!';
+    const tentativa = prompt('🔒 Digite a senha para acessar o exportador:');
+    
+    if (tentativa !== senhaCorreta) {
+    document.write(`
+      <style>
+        body {
+          background-color: #f8f6ff;
+          font-family: 'Sora', sans-serif;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          margin: 0;
+          }
+          .erro-container {
+            text-align: center;
+            padding: 40px;
+            border-radius: 20px;
+            background: white;
+            box-shadow: 0 0 40px rgba(105, 0, 242, 0.1);
+            max-width: 400px;
+            }
+            .erro-container h1 {
+              font-size: 2rem;
+              color: #6900f2;
+              margin-bottom: 10px;
+              }
+              .erro-container p {
+                color: #666;
+                font-size: 1rem;
+                }
+                </style>
+                
+                <div class="erro-container">
+                  <img src="/images/404.svg" alt="404error">
+                  <h1>Acesso Negado</h1>
+                  <p>Senha incorreta ou não informada.<br>Por favor, tente novamente.</p>
+                  </div>
+                  `);
+    throw new Error('Acesso negado');
+  } else {
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('app').style.display = 'block';
+    });
+  }
+</script>
 
-  <header class="sticky top-0  w-full z-50 bg-[#6900f2] text-white p-4 flex flex-col gap-4 items-center">
-    <div class="flex items-center gap-2">
-      <a href="index.html">
-        <img class="w-[125px]" src="/images/logo-revizzei.webp" alt="Logo Revizzei">
-      </a>
+<header class="sticky top-0  w-full z-50 bg-[#6900f2] text-white p-4 flex flex-col gap-4 items-center">
+  <div id="app" style="display:none">
+  <div class="flex items-center gap-2">
+    <a href="index.html">
+      <img class="w-[125px]" src="/images/logo-revizzei.webp" alt="Logo Revizzei">
+    </a>
     </div>
   </header>
-
 
   <main class="flex flex-col gap-6 p-6 w-full max-w-6xl">
     <div class="grid md:grid-cols-2 gap-6">
@@ -63,6 +112,9 @@
 
       <label class="block font-semibold mt-6 mb-2">Texto do Verso (1 por linha):</label>
       <textarea class="verso-input w-full border rounded-md p-3 resize-none text-sm" rows="10"></textarea>
+
+      <label class="block font-semibold mt-6 mb-2">Tamanho da fonte:</label>
+      <input id="fontSizeInput" type="number" min="10" max="100" value="50" class="border rounded-md p-2 w-24" />
     </div>
 
     <div class="flex gap-4">
@@ -80,6 +132,7 @@
 
   <section id="preview-area" class="w-full flex flex-wrap justify-center gap-6 px-6 py-10"></section>
 
+</div>
   <div id="render-area" style="position:absolute; left:-9999px; top:0;"></div>
 
   <script>
@@ -171,6 +224,8 @@
       textoEl.style.zIndex = '10';
       textoEl.style.textAlign = 'center';
       textoEl.contentEditable = isPreview;
+      const fontSize = document.getElementById('fontSizeInput')?.value || 50;
+      textoEl.style.fontSize = `${fontSize}px`;
       textoEl.innerText = texto;
 
       wrapper.appendChild(container);
@@ -178,7 +233,6 @@
 
       return wrapper;
     }
-
 
     function visualizarCards() {
       const frente = document.querySelector('.frente-input').value.trim().split('\n').filter(l => l.trim());
@@ -192,7 +246,6 @@
         const cardFrente = criarCard(frente[i], imagemFrente, '#7000ed', true);
         const cardVerso = criarCard(verso[i], imagemVerso, '#ffffff', true);
 
-        // Escala para visualização
         cardFrente.style.transform = 'scale(0.45)';
         cardFrente.style.transformOrigin = 'top center';
         cardVerso.style.transform = 'scale(0.45)';
@@ -208,178 +261,79 @@
       }
     }
 
+    async function exportarPDFs() {
+      const { jsPDF } = window.jspdf;
+      const renderArea = document.getElementById('render-area');
+      renderArea.innerHTML = '';
 
-//Exportação em PNG 
+      const preview = document.getElementById('preview-area');
+      const blocos = preview.querySelectorAll('.flex.flex-col');
+      if (blocos.length === 0) {
+        alert("Nenhum card visualizado para exportar.");
+        return;
+      }
 
-// async function exportarPDFs() {
-//   const { jsPDF } = window.jspdf;
+      const largura = 600, altura = 850, margem = 30, escala = 2;
+      const total = blocos.length;
+      const colunas = Math.ceil(Math.sqrt(total));
+      const linhas = Math.ceil(total / colunas);
+      const canvasW = colunas * (largura + margem) - margem;
+      const canvasH = linhas * (altura + margem) - margem;
 
-//   const renderArea = document.getElementById('render-area');
-//   renderArea.innerHTML = '';
+      const gradeFrente = document.createElement('div');
+      const gradeVerso = document.createElement('div');
+      [gradeFrente, gradeVerso].forEach(grade => {
+        grade.style.position = 'relative';
+        grade.style.width = `${canvasW}px`;
+        grade.style.height = `${canvasH}px`;
+      });
 
-//   const preview = document.getElementById('preview-area');
-//   const blocos = preview.querySelectorAll('.flex.flex-col');
+      for (let i = 0; i < total; i++) {
+        const bloco = blocos[i];
+        const textos = bloco.querySelectorAll('.card-texto');
+        if (textos.length < 2) continue;
 
-//   if (blocos.length === 0) {
-//     alert("Nenhum card visualizado para exportar.");
-//     return;
-//   }
+        const frenteTexto = textos[0].innerText.trim();
+        const versoTexto = textos[1].innerText.trim();
 
-//   const imagensFrente = [];
-//   const imagensVerso = [];
+        const col = i % colunas;
+        const lin = Math.floor(i / colunas);
 
-//   const largura = 600;
-//   const altura = 850;
-//   const escala = 3;
-//   const pdfW = largura * escala;
-//   const pdfH = altura * escala;
+        const frente = criarCard(frenteTexto, imagemFrente, '#7000ed');
+        frente.style.position = 'absolute';
+        frente.style.left = `${col * (largura + margem)}px`;
+        frente.style.top = `${lin * (altura + margem)}px`;
+        gradeFrente.appendChild(frente);
 
-// for (let bloco of blocos) {
-//   const textos = bloco.querySelectorAll('.card-texto');
-//   if (textos.length < 2) continue;
+        const linV = Math.floor(i / colunas);
+        const colV = (colunas - 1) - (i % colunas);
 
-//   const frenteTexto = textos[0].innerText.trim();
-//   const versoTexto = textos[1].innerText.trim();
+        const verso = criarCard(versoTexto, imagemVerso, '#ffffff');
+        verso.style.position = 'absolute';
+        verso.style.left = `${colV * (largura + margem)}px`;
+        verso.style.top = `${linV * (altura + margem)}px`;
+        gradeVerso.appendChild(verso);
+      }
 
-//   const frente = criarCard(frenteTexto, imagemFrente, '#7000ed');
-//   renderArea.appendChild(frente);
-//   const canvasFrente = await html2canvas(frente, {
-//     width: largura,
-//     height: altura,
-//     scale: escala,
-//     windowWidth: largura,
-//     windowHeight: altura
-//   });
-//   imagensFrente.push(canvasFrente);
+      renderArea.appendChild(gradeFrente);
+      const canvasFrente = await html2canvas(gradeFrente, {
+        scale: escala, width: canvasW, height: canvasH, windowWidth: canvasW, windowHeight: canvasH
+      });
 
-//   const verso = criarCard(versoTexto, imagemVerso, '#ffffff');
-//   renderArea.appendChild(verso);
-//   const canvasVerso = await html2canvas(verso, {
-//     width: largura,
-//     height: altura,
-//     scale: escala,
-//     windowWidth: largura,
-//     windowHeight: altura
-//   });
-//   imagensVerso.push(canvasVerso);
-// }
+      renderArea.appendChild(gradeVerso);
+      const canvasVerso = await html2canvas(gradeVerso, {
+        scale: escala, width: canvasW, height: canvasH, windowWidth: canvasW, windowHeight: canvasH
+      });
 
-//   const frentePdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH] });
-//   const versoPdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH] });
+      const pdfW = canvasW * escala, pdfH = canvasH * escala;
+      const frentePdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH], compress: true });
+      frentePdf.addImage(canvasFrente, 'JPEG', 0, 0, pdfW, pdfH);
+      const versoPdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH], compress: true });
+      versoPdf.addImage(canvasVerso, 'JPEG', 0, 0, pdfW, pdfH);
 
-//   imagensFrente.forEach((canvas, i) => {
-//     if (i > 0) frentePdf.addPage([pdfW, pdfH]);
-//     frentePdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pdfW, pdfH);
-//   });
-
-//   imagensVerso.slice().reverse().forEach((canvas, i) => {
-//     if (i > 0) versoPdf.addPage([pdfW, pdfH]);
-//     versoPdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pdfW, pdfH);
-//   });
-
-//   frentePdf.save('cards_frente.pdf');
-//   versoPdf.save('cards_verso.pdf');
-// }
-
-
-
-
-//Exportação em jpg
-
-async function exportarPDFs() {
-  const { jsPDF } = window.jspdf;
-
-  const renderArea = document.getElementById('render-area');
-  renderArea.innerHTML = '';
-
-  const preview = document.getElementById('preview-area');
-  const blocos = preview.querySelectorAll('.flex.flex-col');
-
-  if (blocos.length === 0) {
-    alert("Nenhum card visualizado para exportar.");
-    return;
-  }
-
-  const largura = 600;
-  const altura = 850;
-  const margem = 30;
-  const escala = 2;
-
-  // Determina a grade mais próxima quadrada
-  const total = blocos.length;
-  const colunas = Math.ceil(Math.sqrt(total));
-  const linhas = Math.ceil(total / colunas);
-
-  const canvasW = colunas * (largura + margem) - margem;
-  const canvasH = linhas * (altura + margem) - margem;
-
-  // Cria grades visuais
-  const gradeFrente = document.createElement('div');
-  const gradeVerso = document.createElement('div');
-  [gradeFrente, gradeVerso].forEach(grade => {
-    grade.style.position = 'relative';
-    grade.style.width = `${canvasW}px`;
-    grade.style.height = `${canvasH}px`;
-  });
-
-  for (let i = 0; i < total; i++) {
-    const bloco = blocos[i];
-    const textos = bloco.querySelectorAll('.card-texto');
-    if (textos.length < 2) continue;
-
-    const frenteTexto = textos[0].innerText.trim();
-    const versoTexto = textos[1].innerText.trim();
-
-    const col = i % colunas;
-    const lin = Math.floor(i / colunas);
-
-    const frente = criarCard(frenteTexto, imagemFrente, '#7000ed');
-    frente.style.position = 'absolute';
-    frente.style.left = `${col * (largura + margem)}px`;
-    frente.style.top = `${lin * (altura + margem)}px`;
-    gradeFrente.appendChild(frente);
-
-    const j = total - 1 - i;
-    const colV = j % colunas;
-    const linV = Math.floor(j / colunas);
-
-    const verso = criarCard(versoTexto, imagemVerso, '#ffffff');
-    verso.style.position = 'absolute';
-    verso.style.left = `${colV * (largura + margem)}px`;
-    verso.style.top = `${linV * (altura + margem)}px`;
-    gradeVerso.appendChild(verso);
-  }
-
-  renderArea.appendChild(gradeFrente);
-  const canvasFrente = await html2canvas(gradeFrente, {
-    scale: escala,
-    width: canvasW,
-    height: canvasH,
-    windowWidth: canvasW,
-    windowHeight: canvasH
-  });
-
-  renderArea.appendChild(gradeVerso);
-  const canvasVerso = await html2canvas(gradeVerso, {
-    scale: escala,
-    width: canvasW,
-    height: canvasH,
-    windowWidth: canvasW,
-    windowHeight: canvasH
-  });
-
-  const pdfW = canvasW * escala;
-  const pdfH = canvasH * escala;
-
-  const frentePdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH], compress: true });
-  frentePdf.addImage(canvasFrente, 'JPEG', 0, 0, pdfW, pdfH);
-
-  const versoPdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH], compress: true });
-  versoPdf.addImage(canvasVerso, 'JPEG', 0, 0, pdfW, pdfH);
-
-  frentePdf.save('cards_frente.pdf');
-  versoPdf.save('cards_verso.pdf');
-}
+      frentePdf.save('cards_frente.pdf');
+      versoPdf.save('cards_verso.pdf');
+    }
   </script>
 </body>
 
