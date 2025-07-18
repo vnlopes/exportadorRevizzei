@@ -85,7 +85,7 @@
 }
 </script>
 
-<body class="bg-white text-[#494949] min-h-screen flex flex-col items-center justify-center">
+<body class="bg-white text-[#494949] min-h-screen flex flex-col items-center">
   
 
   <header id="header" class="sticky top-0 invisible w-full z-50 bg-[#6900f2] text-white p-4">
@@ -133,10 +133,10 @@
     </div>
   </main>
 
-  <section id="preview-area" class="w-full flex flex-wrap justify-center gap-6 px-6 py-10"></section>
-
-  <div id="render-area" style="position:absolute; left:-9999px; top:0;"></div>
 </div>
+
+<section id="preview-area" class="w-full flex flex-wrap justify-center px-6 py-10"></section>
+<div id="render-area" class="flex flex-wrap"></div>
 
   <script>
     let imagemFrente = null;
@@ -255,8 +255,8 @@
         cardVerso.style.transformOrigin = 'top center';
 
         const bloco = document.createElement('div');
-        bloco.className = 'flex flex-col gap-4 items-center';
-        bloco.innerHTML = `<p class="mb-2 font-semibold">Card ${i + 1}</p>`;
+        bloco.className = 'flex flex-col items-center';
+        bloco.innerHTML = `<p class=" font-semibold">Card ${i + 1}</p>`;
         bloco.appendChild(cardFrente);
         bloco.appendChild(cardVerso);
 
