@@ -143,6 +143,15 @@
     let imagemVerso = null;
     const btn = document.getElementById('btnExportar');
 
+    function limparNumeracao(textarea) {
+      const linhas = textarea.value.split('\n');
+      const linhasLimpas = linhas.map(linha => {
+        // Remove leading numbers followed by a period and optional space
+        return linha.replace(/^\d+\.\s*/, '');
+      });
+      textarea.value = linhasLimpas.join('\n');
+    }
+
     function lerImagem(file) {
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -168,6 +177,16 @@
       if (!file) return;
       imagemVerso = await lerImagem(file);
       checkReady();
+    });
+
+    // Add event listeners for textarea inputs
+    document.querySelector('.frente-input').addEventListener('input', (e) => limparNumeracao(e.target));
+    document.querySelector('.frente-input').addEventListener('paste', (e) => {
+      setTimeout(() => limparNumeracao(e.target), 10);
+    });
+    document.querySelector('.verso-input').addEventListener('input', (e) => limparNumeracao(e.target));
+    document.querySelector('.verso-input').addEventListener('paste', (e) => {
+      setTimeout(() => limparNumeracao(e.target), 10);
     });
 
     function checkReady() {
