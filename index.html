@@ -19,7 +19,7 @@
       font-family: 'Sora', sans-serif;
       font-weight: 700;
       font-size: 50px;
-      max-width: 80%;
+      max-width: 75%;
       text-align: center;
       word-wrap: break-word;
       white-space: pre-wrap;
@@ -138,225 +138,341 @@
 <section id="preview-area" class="w-full flex flex-wrap justify-center px-6 py-10"></section>
 <div id="render-area" class="flex flex-wrap"></div>
 
-  <script>
-    let imagemFrente = null;
-    let imagemVerso = null;
-    const btn = document.getElementById('btnExportar');
+<script>
+  let imagemFrente = null;
+  let imagemVerso = null;
+  const btn = document.getElementById('btnExportar');
+  const DEFAULT_FONT = 30;
+  const PREVIEW_GAP_X = 32;
+  const PREVIEW_GAP_Y = 64;
+  const PREVIEW_GAP_INNER = 28;
 
-    function limparNumeracao(textarea) {
-      const linhas = textarea.value.split('\n');
-      const linhasLimpas = linhas.map(linha => {
-        // Remove leading numbers followed by a period and optional space
-        return linha.replace(/^\d+\.\s*/, '');
-      });
-      textarea.value = linhasLimpas.join('\n');
-    }
+  const fontInput = document.getElementById('fontSizeInput');
+  if (fontInput) fontInput.value = DEFAULT_FONT;
 
-    function lerImagem(file) {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        if (file.type === 'image/svg+xml') {
-          reader.onload = () => resolve({ type: 'svg', content: reader.result });
-          reader.readAsText(file);
-        } else {
-          reader.onload = () => resolve({ type: 'img', content: reader.result });
-          reader.readAsDataURL(file);
-        }
-      });
-    }
+  function limparNumeracao(textarea) {
+    const linhas = textarea.value.split('\n');
+    const linhasLimpas = linhas.map(l => l.replace(/^\d+\.\s*/, ''));
+    textarea.value = linhasLimpas.join('\n');
+  }
 
-    document.getElementById('imgFrente').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      imagemFrente = await lerImagem(file);
-      checkReady();
-    });
-
-    document.getElementById('imgVerso').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      imagemVerso = await lerImagem(file);
-      checkReady();
-    });
-
-    // Add event listeners for textarea inputs
-    document.querySelector('.frente-input').addEventListener('input', (e) => limparNumeracao(e.target));
-    document.querySelector('.frente-input').addEventListener('paste', (e) => {
-      setTimeout(() => limparNumeracao(e.target), 10);
-    });
-    document.querySelector('.verso-input').addEventListener('input', (e) => limparNumeracao(e.target));
-    document.querySelector('.verso-input').addEventListener('paste', (e) => {
-      setTimeout(() => limparNumeracao(e.target), 10);
-    });
-
-    function checkReady() {
-      if (imagemFrente && imagemVerso) {
-        btn.disabled = false;
-        btn.classList.remove('opacity-50');
-      }
-    }
-
-    function criarCard(texto, imagem, corTexto, isPreview = false) {
-      const wrapper = document.createElement('div');
-      wrapper.style.position = 'relative';
-      wrapper.style.width = '600px';
-      wrapper.style.height = '850px';
-      wrapper.style.overflow = 'hidden';
-      wrapper.style.display = 'flex';
-      wrapper.style.alignItems = 'center';
-      wrapper.style.justifyContent = 'center';
-      wrapper.style.backgroundColor = '#fff';
-
-      const container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.top = '0';
-      container.style.left = '0';
-      container.style.width = '600px';
-      container.style.height = '850px';
-      container.style.overflow = 'hidden';
-      container.style.zIndex = '0';
-
-      if (imagem.type === 'svg') {
-        const div = document.createElement('div');
-        div.innerHTML = imagem.content;
-        const svg = div.querySelector('svg');
-        if (svg) {
-          svg.setAttribute('width', '600');
-          svg.setAttribute('height', '850');
-          svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-          svg.style.width = '100%';
-          svg.style.height = '100%';
-          svg.style.display = 'block';
-          container.appendChild(svg);
-        }
+  function lerImagem(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      if (file.type === 'image/svg+xml') {
+        reader.onload = () => resolve({ type: 'svg', content: reader.result });
+        reader.readAsText(file);
       } else {
-        const img = document.createElement('img');
-        img.src = imagem.content;
-        img.style.width = '100%';
-        img.style.height = '100%';
-        img.style.objectFit = 'contain';
-        img.style.objectPosition = 'center';
-        container.appendChild(img);
+        reader.onload = () => resolve({ type: 'img', content: reader.result });
+        reader.readAsDataURL(file);
       }
+    });
+  }
 
-      const textoEl = isPreview ? document.createElement('div') : document.createElement('span');
-      textoEl.className = 'card-texto';
-      textoEl.style.position = 'relative';
-      textoEl.style.color = corTexto;
-      textoEl.style.zIndex = '10';
-      textoEl.style.textAlign = 'center';
-      textoEl.contentEditable = isPreview;
-      const fontSize = document.getElementById('fontSizeInput')?.value || 50;
-      textoEl.style.fontSize = `${fontSize}px`;
-      textoEl.innerText = texto;
+  document.getElementById('imgFrente').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    imagemFrente = await lerImagem(file);
+    checkReady();
+  });
+  document.getElementById('imgVerso').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    imagemVerso = await lerImagem(file);
+    checkReady();
+  });
 
-      wrapper.appendChild(container);
-      wrapper.appendChild(textoEl);
+  document.querySelector('.frente-input').addEventListener('input', (e) => limparNumeracao(e.target));
+  document.querySelector('.frente-input').addEventListener('paste', (e) => setTimeout(() => limparNumeracao(e.target), 10));
+  document.querySelector('.verso-input').addEventListener('input', (e) => limparNumeracao(e.target));
+  document.querySelector('.verso-input').addEventListener('paste', (e) => setTimeout(() => limparNumeracao(e.target), 10));
 
-      return wrapper;
+  function checkReady() {
+    if (imagemFrente && imagemVerso) {
+      btn.disabled = false;
+      btn.classList.remove('opacity-50');
+    }
+  }
+
+  function criarCard(texto, imagem, corTexto, isPreview = false) {
+    const wrapper = document.createElement('div');
+    Object.assign(wrapper.style, {
+      position: 'relative',
+      width: '600px',
+      height: '850px',
+      overflow: 'hidden',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#fff'
+    });
+
+    const container = document.createElement('div');
+    Object.assign(container.style, {
+      position: 'absolute',
+      top: 0, left: 0,
+      width: '600px',
+      height: '850px',
+      overflow: 'hidden',
+      zIndex: 0
+    });
+
+    if (imagem.type === 'svg') {
+      const div = document.createElement('div');
+      div.innerHTML = imagem.content;
+      const svg = div.querySelector('svg');
+      if (svg) {
+        svg.setAttribute('width', '600');
+        svg.setAttribute('height', '850');
+        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        svg.style.display = 'block';
+        container.appendChild(svg);
+      }
+    } else {
+      const img = document.createElement('img');
+      img.src = imagem.content;
+      Object.assign(img.style, {
+        width: '100%',
+        height: '100%',
+        objectFit: 'contain',
+        objectPosition: 'center'
+      });
+      container.appendChild(img);
     }
 
-    function visualizarCards() {
-      const frente = document.querySelector('.frente-input').value.trim().split('\n').filter(l => l.trim());
-      const verso = document.querySelector('.verso-input').value.trim().split('\n').filter(l => l.trim());
+    const textoEl = isPreview ? document.createElement('div') : document.createElement('span');
+    textoEl.className = 'card-texto';
+    Object.assign(textoEl.style, {
+      position: 'relative',
+      color: corTexto,
+      zIndex: 10,
+      textAlign: 'center',
+      lineHeight: '1.0',
+      fontSize: (document.getElementById('fontSizeInput')?.value || DEFAULT_FONT) + "px"
+    });
+    textoEl.contentEditable = isPreview;
+    textoEl.innerText = texto;
 
-      const total = Math.min(frente.length, verso.length);
-      const preview = document.getElementById('preview-area');
-      preview.innerHTML = '';
+    if (isPreview) {
+      textoEl.addEventListener('focus', () => {
+        let box = wrapper.querySelector('.font-seletor-box');
+        if (!box) {
+          box = document.createElement('div');
+          box.className = "font-seletor-box";
+          Object.assign(box.style, {
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: '#fff',
+            padding: '8px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+            zIndex: 20
+          });
+          box.setAttribute("data-ignore", "true");
 
-      for (let i = 0; i < total; i++) {
-        const cardFrente = criarCard(frente[i], imagemFrente, '#7000ed', true);
-        const cardVerso = criarCard(verso[i], imagemVerso, '#ffffff', true);
+          const seletor = document.createElement('input');
+          seletor.type = 'number';
+          seletor.min = 10;
+          seletor.max = 150;
+          seletor.value = parseInt(textoEl.style.fontSize) || DEFAULT_FONT;
+          Object.assign(seletor.style, {
+            width: '140px',
+            height: '44px',
+            fontSize: '20px',
+            border: '2px solid #6900f2',
+            borderRadius: '6px',
+            textAlign: 'center'
+          });
+          seletor.addEventListener('input', (e) => {
+            textoEl.style.fontSize = e.target.value + "px";
+          });
 
-        cardFrente.style.transform = 'scale(0.45)';
-        cardFrente.style.transformOrigin = 'top center';
-        cardVerso.style.transform = 'scale(0.45)';
-        cardVerso.style.transformOrigin = 'top center';
+          const fechar = document.createElement('button');
+          fechar.innerText = "×";
+          Object.assign(fechar.style, {
+            padding: '0 10px',
+            height: '44px',
+            background: '#ef4444',
+            color: '#fff',
+            borderRadius: '6px',
+            fontSize: '22px',
+            lineHeight: '1',
+            cursor: 'pointer'
+          });
+          fechar.onclick = () => box.remove();
 
-        const bloco = document.createElement('div');
-        bloco.className = 'flex flex-col items-center';
-        bloco.innerHTML = `<p class=" font-semibold">Card ${i + 1}</p>`;
-        bloco.appendChild(cardFrente);
-        bloco.appendChild(cardVerso);
-
-        preview.appendChild(bloco);
-      }
+          box.appendChild(seletor);
+          box.appendChild(fechar);
+          wrapper.appendChild(box);
+        }
+      });
     }
 
-    async function exportarPDFs() {
-      const { jsPDF } = window.jspdf;
-      const renderArea = document.getElementById('render-area');
-      renderArea.innerHTML = '';
+    wrapper.appendChild(container);
+    wrapper.appendChild(textoEl);
+    return wrapper;
+  }
 
-      const preview = document.getElementById('preview-area');
-      const blocos = preview.querySelectorAll('.flex.flex-col');
-      if (blocos.length === 0) {
-        alert("Nenhum card visualizado para exportar.");
-        return;
-      }
+  function visualizarCards() {
+    const frente = document.querySelector('.frente-input').value.trim().split('\n').filter(l => l.trim());
+    const verso = document.querySelector('.verso-input').value.trim().split('\n').filter(l => l.trim());
+    const total = Math.min(frente.length, verso.length);
+    const preview = document.getElementById('preview-area');
+    preview.innerHTML = '';
 
-      const largura = 600, altura = 850, margem = 30, escala = 2;
-      const total = blocos.length;
-      const colunas = Math.ceil(Math.sqrt(total));
-      const linhas = Math.ceil(total / colunas);
-      const canvasW = colunas * (largura + margem) - margem;
-      const canvasH = linhas * (altura + margem) - margem;
+    const SCALE_PREVIEW = 0.8; // ⇦ cards menores no preview
 
-      const gradeFrente = document.createElement('div');
-      const gradeVerso = document.createElement('div');
-      [gradeFrente, gradeVerso].forEach(grade => {
-        grade.style.position = 'relative';
-        grade.style.width = `${canvasW}px`;
-        grade.style.height = `${canvasH}px`;
+    for (let i = 0; i < total; i++) {
+      const cardFrente = criarCard(frente[i], imagemFrente, '#7000ed', true);
+      const cardVerso = criarCard(verso[i], imagemVerso, '#ffffff', true);
+
+      // aplica scale menor no preview
+      [cardFrente, cardVerso].forEach(c => {
+        c.style.transform = `scale(${SCALE_PREVIEW})`;
+        c.style.transformOrigin = 'top center';
       });
 
-      for (let i = 0; i < total; i++) {
-        const bloco = blocos[i];
-        const textos = bloco.querySelectorAll('.card-texto');
-        if (textos.length < 2) continue;
+      cardFrente.style.marginBottom = PREVIEW_GAP_INNER + 'px';
 
-        const frenteTexto = textos[0].innerText.trim();
-        const versoTexto = textos[1].innerText.trim();
-
-        const col = i % colunas;
-        const lin = Math.floor(i / colunas);
-
-        const frente = criarCard(frenteTexto, imagemFrente, '#7000ed');
-        frente.style.position = 'absolute';
-        frente.style.left = `${col * (largura + margem)}px`;
-        frente.style.top = `${lin * (altura + margem)}px`;
-        gradeFrente.appendChild(frente);
-
-        const linV = Math.floor(i / colunas);
-        const colV = (colunas - 1) - (i % colunas);
-
-        const verso = criarCard(versoTexto, imagemVerso, '#ffffff');
-        verso.style.position = 'absolute';
-        verso.style.left = `${colV * (largura + margem)}px`;
-        verso.style.top = `${linV * (altura + margem)}px`;
-        gradeVerso.appendChild(verso);
-      }
-
-      renderArea.appendChild(gradeFrente);
-      const canvasFrente = await html2canvas(gradeFrente, {
-        scale: escala, width: canvasW, height: canvasH, windowWidth: canvasW, windowHeight: canvasH
+      const bloco = document.createElement('div');
+      bloco.className = 'preview-bloco';
+      Object.assign(bloco.style, {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        margin: `${PREVIEW_GAP_Y}px ${PREVIEW_GAP_X}px`
       });
+      bloco.innerHTML = `<p class="font-semibold mb-4" style="margin-bottom:12px">Card ${i + 1}</p>`;
+      bloco.appendChild(cardFrente);
+      bloco.appendChild(cardVerso);
 
-      renderArea.appendChild(gradeVerso);
-      const canvasVerso = await html2canvas(gradeVerso, {
-        scale: escala, width: canvasW, height: canvasH, windowWidth: canvasW, windowHeight: canvasH
-      });
-
-      const pdfW = canvasW * escala, pdfH = canvasH * escala;
-      const frentePdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH], compress: true });
-      frentePdf.addImage(canvasFrente, 'JPEG', 0, 0, pdfW, pdfH);
-      const versoPdf = new jsPDF({ unit: 'px', format: [pdfW, pdfH], compress: true });
-      versoPdf.addImage(canvasVerso, 'JPEG', 0, 0, pdfW, pdfH);
-
-      frentePdf.save('cards_frente.pdf');
-      versoPdf.save('cards_verso.pdf');
+      preview.appendChild(bloco);
     }
-  </script>
+  }
+
+async function exportarPDFs() {
+  const { jsPDF } = window.jspdf;
+  const renderArea = document.getElementById('render-area');
+  renderArea.innerHTML = '';
+
+  const preview = document.getElementById('preview-area');
+  const blocos = preview.querySelectorAll('.preview-bloco');
+  if (blocos.length === 0) {
+    alert("Nenhum card visualizado para exportar.");
+    return;
+  }
+
+  document.querySelectorAll('[data-ignore="true"]').forEach(el => el.remove());
+
+  const largura = 600, altura = 850, margem = 30;
+  const total = blocos.length;
+  const colunas = Math.ceil(Math.sqrt(total));
+  const linhas  = Math.ceil(total / colunas);
+  const canvasW = colunas * (largura + margem) - margem;
+  const canvasH = linhas  * (altura  + margem) - margem;
+
+  const gradeFrente = document.createElement('div');
+  const gradeVerso  = document.createElement('div');
+  [gradeFrente, gradeVerso].forEach(grade => {
+    grade.style.position = 'relative';
+    grade.style.width  = `${canvasW}px`;
+    grade.style.height = `${canvasH}px`;
+    grade.style.background = '#fff';
+  });
+
+  for (let i = 0; i < total; i++) {
+    const bloco = blocos[i];
+    const textos = bloco.querySelectorAll('.card-texto');
+    if (textos.length < 2) continue;
+
+    const frenteTexto = textos[0].innerText.trim();
+    const frenteSize  = textos[0].style.fontSize || `${DEFAULT_FONT}px`;
+    const versoTexto  = textos[1].innerText.trim();
+    const versoSize   = textos[1].style.fontSize || `${DEFAULT_FONT}px`;
+
+    const col = i % colunas;
+    const lin = Math.floor(i / colunas);
+
+    const frente = criarCard(frenteTexto, imagemFrente, '#7000ed');
+    frente.querySelector('.card-texto').style.fontSize = frenteSize;
+    Object.assign(frente.style, {
+      position: 'absolute',
+      left: `${col * (largura + margem)}px`,
+      top:  `${lin * (altura + margem)}px`
+    });
+    gradeFrente.appendChild(frente);
+
+    const colV = (colunas - 1) - (i % colunas);
+    const verso = criarCard(versoTexto, imagemVerso, '#ffffff');
+    verso.querySelector('.card-texto').style.fontSize = versoSize;
+    Object.assign(verso.style, {
+      position: 'absolute',
+      left: `${colV * (largura + margem)}px`,
+      top:  `${lin * (altura + margem)}px`
+    });
+    gradeVerso.appendChild(verso);
+  }
+
+  // ====== QUALIDADE x TAMANHO (equilibrado) ======
+  const RENDER_SCALE = 2;            // 2× é nítido e leve
+  const JPEG_QUALITY = 0.82;         // ajuste fino de peso/qualidade
+  const PDF_COMPRESS_MODE = 'FAST';  // compressão no jsPDF
+
+  renderArea.appendChild(gradeFrente);
+  const canvasFrenteHi = await html2canvas(gradeFrente, {
+    scale: RENDER_SCALE, width: canvasW, height: canvasH,
+    backgroundColor: '#FFFFFF', useCORS: true
+  });
+
+  renderArea.appendChild(gradeVerso);
+  const canvasVersoHi  = await html2canvas(gradeVerso, {
+    scale: RENDER_SCALE, width: canvasW, height: canvasH,
+    backgroundColor: '#FFFFFF', useCORS: true
+  });
+
+  // Se quiser um teto para não explodir RAM (opcional):
+  function clampCanvasToMax(src, maxSide = 3500) {
+    if (src.width <= maxSide && src.height <= maxSide) return src; // já ok
+    const ratio = Math.min(maxSide / src.width, maxSide / src.height);
+    const w = Math.round(src.width * ratio);
+    const h = Math.round(src.height * ratio);
+    const tmp = document.createElement('canvas');
+    tmp.width = w; tmp.height = h;
+    const ctx = tmp.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, w, h);
+    return tmp;
+  }
+
+  const fCanvas = clampCanvasToMax(canvasFrenteHi);
+  const vCanvas = clampCanvasToMax(canvasVersoHi);
+
+  // Converte para JPEG com qualidade controlada
+  const frenteJPEG = fCanvas.toDataURL('image/jpeg', JPEG_QUALITY);
+  const versoJPEG  = vCanvas.toDataURL('image/jpeg', JPEG_QUALITY);
+
+  // PDF no tamanho do bitmap final
+  const frentePdf = new jsPDF({ unit: 'px', format: [fCanvas.width, fCanvas.height], compress: true });
+  frentePdf.addImage(frenteJPEG, 'JPEG', 0, 0, fCanvas.width, fCanvas.height, undefined, PDF_COMPRESS_MODE);
+
+  const versoPdf  = new jsPDF({ unit: 'px', format: [vCanvas.width, vCanvas.height], compress: true });
+  versoPdf.addImage(versoJPEG,  'JPEG', 0, 0, vCanvas.width,  vCanvas.height,  undefined, PDF_COMPRESS_MODE);
+
+  frentePdf.save('cards_frente.pdf');
+  versoPdf.save('cards_verso.pdf');
+}
+
+
+
+</script>
+
 </body>
 
 </html>
