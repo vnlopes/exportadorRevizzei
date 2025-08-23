@@ -368,14 +368,30 @@ async function exportarPDFs() {
     return;
   }
 
+  // remove controles de fonte da prévia
   document.querySelectorAll('[data-ignore="true"]').forEach(el => el.remove());
 
-  const largura = 600, altura = 850, margem = 30;
+  // ==== tamanhos do CARD (px) e alvo físico (mm) ====
+  const CARD_W_PX = 600;
+  const CARD_H_PX = 850;
+  const CARD_W_MM = 70;   // 7 cm
+  const CARD_H_MM = 100;  // 10 cm
+
+  // sua margem entre cards (em px) na prancheta raster:
+  const MARGEM_PX = 30;
+
+  // qualidade x tamanho do bitmap
+  const RENDER_SCALE = 2;           // 2 é nítido e leve
+  const JPEG_QUALITY = 0.82;        // 0.75–0.9 bom equilíbrio
+  const PDF_COMPRESS_MODE = 'FAST'; // compressão no jsPDF
+
+  // === grade (px) como você já fazia ===
   const total = blocos.length;
   const colunas = Math.ceil(Math.sqrt(total));
   const linhas  = Math.ceil(total / colunas);
-  const canvasW = colunas * (largura + margem) - margem;
-  const canvasH = linhas  * (altura  + margem) - margem;
+
+  const canvasW = colunas * (CARD_W_PX + MARGEM_PX) - MARGEM_PX;
+  const canvasH = linhas  * (CARD_H_PX + MARGEM_PX) - MARGEM_PX;
 
   const gradeFrente = document.createElement('div');
   const gradeVerso  = document.createElement('div');
@@ -399,78 +415,63 @@ async function exportarPDFs() {
     const col = i % colunas;
     const lin = Math.floor(i / colunas);
 
+    // frente
     const frente = criarCard(frenteTexto, imagemFrente, '#7000ed');
     frente.querySelector('.card-texto').style.fontSize = frenteSize;
     Object.assign(frente.style, {
       position: 'absolute',
-      left: `${col * (largura + margem)}px`,
-      top:  `${lin * (altura + margem)}px`
+      left: `${col * (CARD_W_PX + MARGEM_PX)}px`,
+      top:  `${lin * (CARD_H_PX + MARGEM_PX)}px`
     });
     gradeFrente.appendChild(frente);
 
+    // verso espelhado horizontalmente
     const colV = (colunas - 1) - (i % colunas);
     const verso = criarCard(versoTexto, imagemVerso, '#ffffff');
     verso.querySelector('.card-texto').style.fontSize = versoSize;
     Object.assign(verso.style, {
       position: 'absolute',
-      left: `${colV * (largura + margem)}px`,
-      top:  `${lin * (altura + margem)}px`
+      left: `${colV * (CARD_W_PX + MARGEM_PX)}px`,
+      top:  `${lin * (CARD_H_PX + MARGEM_PX)}px`
     });
     gradeVerso.appendChild(verso);
   }
 
-  // ====== QUALIDADE x TAMANHO (equilibrado) ======
-  const RENDER_SCALE = 2;            // 2× é nítido e leve
-  const JPEG_QUALITY = 0.82;         // ajuste fino de peso/qualidade
-  const PDF_COMPRESS_MODE = 'FAST';  // compressão no jsPDF
-
+  // ---- rasterização hi-dpi (px) ----
   renderArea.appendChild(gradeFrente);
-  const canvasFrenteHi = await html2canvas(gradeFrente, {
+  const canvasFrente = await html2canvas(gradeFrente, {
     scale: RENDER_SCALE, width: canvasW, height: canvasH,
     backgroundColor: '#FFFFFF', useCORS: true
   });
-
   renderArea.appendChild(gradeVerso);
-  const canvasVersoHi  = await html2canvas(gradeVerso, {
+  const canvasVerso  = await html2canvas(gradeVerso, {
     scale: RENDER_SCALE, width: canvasW, height: canvasH,
     backgroundColor: '#FFFFFF', useCORS: true
   });
 
-  // Se quiser um teto para não explodir RAM (opcional):
-  function clampCanvasToMax(src, maxSide = 3500) {
-    if (src.width <= maxSide && src.height <= maxSide) return src; // já ok
-    const ratio = Math.min(maxSide / src.width, maxSide / src.height);
-    const w = Math.round(src.width * ratio);
-    const h = Math.round(src.height * ratio);
-    const tmp = document.createElement('canvas');
-    tmp.width = w; tmp.height = h;
-    const ctx = tmp.getContext('2d');
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(src, 0, 0, w, h);
-    return tmp;
-  }
+  // ---- mapeia PX -> MM para a página do PDF ----
+  // px/mm baseado no próprio card: 600px ≙ 70mm  =>  pxPorMm = 600/70
+  const PX_POR_MM = CARD_W_PX / CARD_W_MM;
+  const GAP_MM = MARGEM_PX / PX_POR_MM;
 
-  const fCanvas = clampCanvasToMax(canvasFrenteHi);
-  const vCanvas = clampCanvasToMax(canvasVersoHi);
+  // tamanho físico da página (mm), com espaçamentos em mm
+  const pageWmm = colunas * CARD_W_MM + (colunas - 1) * GAP_MM;
+  const pageHmm = linhas  * CARD_H_MM + (linhas  - 1) * GAP_MM;
 
-  // Converte para JPEG com qualidade controlada
-  const frenteJPEG = fCanvas.toDataURL('image/jpeg', JPEG_QUALITY);
-  const versoJPEG  = vCanvas.toDataURL('image/jpeg', JPEG_QUALITY);
+  // converte bitmap para JPEG (leve) – o tamanho físico é definido no addImage
+  const frenteJPEG = canvasFrente.toDataURL('image/jpeg', JPEG_QUALITY);
+  const versoJPEG  = canvasVerso.toDataURL('image/jpeg',  JPEG_QUALITY);
 
-  // PDF no tamanho do bitmap final
-  const frentePdf = new jsPDF({ unit: 'px', format: [fCanvas.width, fCanvas.height], compress: true });
-  frentePdf.addImage(frenteJPEG, 'JPEG', 0, 0, fCanvas.width, fCanvas.height, undefined, PDF_COMPRESS_MODE);
+  // ---- cria PDFs em milímetros, no tamanho físico correto ----
+  const frentePdf = new jsPDF({ unit: 'mm', format: [pageWmm, pageHmm], compress: true });
+  frentePdf.addImage(frenteJPEG, 'JPEG', 0, 0, pageWmm, pageHmm, undefined, PDF_COMPRESS_MODE);
 
-  const versoPdf  = new jsPDF({ unit: 'px', format: [vCanvas.width, vCanvas.height], compress: true });
-  versoPdf.addImage(versoJPEG,  'JPEG', 0, 0, vCanvas.width,  vCanvas.height,  undefined, PDF_COMPRESS_MODE);
+  const versoPdf  = new jsPDF({ unit: 'mm', format: [pageWmm, pageHmm], compress: true });
+  versoPdf.addImage(versoJPEG,  'JPEG', 0, 0, pageWmm, pageHmm,  undefined, PDF_COMPRESS_MODE);
 
   frentePdf.save('cards_frente.pdf');
   versoPdf.save('cards_verso.pdf');
 }
-
-
-
 </script>
 
 </body>
