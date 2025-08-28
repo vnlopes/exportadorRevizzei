@@ -37,9 +37,9 @@
 <script>
   const senhaCorreta = 'R3v1zze1ç!';
   const tentativa = prompt('🔒 Digite a senha para acessar o exportador:');
-  
+
   if (tentativa !== senhaCorreta) {
-  document.write(`
+    document.write(`
     <style>
       body {
         background-color: #f8f6ff;
@@ -75,18 +75,18 @@
                 <p>Senha incorreta ou não informada.<br>Por favor, tente novamente.</p>
                 </div>
                 `);
-  throw new Error('Acesso negado');
-} else {
-  window.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('app').style.display = 'block';
-    // document.getElementById('app').classList.add('w-full', 'flex', 'justify-center', 'items-center', 'h-screen');
-    document.getElementById('header').classList.remove("invisible")
-  });
-}
+    throw new Error('Acesso negado');
+  } else {
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('app').style.display = 'block';
+      // document.getElementById('app').classList.add('w-full', 'flex', 'justify-center', 'items-center', 'h-screen');
+      document.getElementById('header').classList.remove("invisible")
+    });
+  }
 </script>
 
 <body class="bg-white text-[#494949] min-h-screen flex flex-col items-center">
-  
+
 
   <header id="header" class="sticky top-0 invisible w-full z-50 bg-[#6900f2] text-white p-4">
     <div class="flex items-center justify-between w-full px-6">
@@ -95,385 +95,428 @@
       </a>
     </div>
   </header>
-<div id="app" style="display:none" class="w-full max-w-6xl flex flex-col items-center gap-6">
+  <div id="app" style="display:none" class="w-full max-w-6xl flex flex-col items-center gap-6">
 
-  <main class="flex flex-col gap-6 p-6 w-full max-w-6xl">
-    <div class="grid md:grid-cols-2 gap-6">
-      <div>
-        <label class="font-semibold block mb-2">Imagem da Frente:</label>
-        <input type="file" id="imgFrente" accept="image/*" class="w-full border rounded-md p-2" />
+    <main class="flex flex-col gap-6 p-6 w-full max-w-6xl">
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <label class="font-semibold block mb-2">Imagem da Frente:</label>
+          <input type="file" id="imgFrente" accept="image/*" class="w-full border rounded-md p-2" />
+        </div>
+        <div>
+          <label class="font-semibold block mb-2">Imagem do Verso:</label>
+          <input type="file" id="imgVerso" accept="image/*" class="w-full border rounded-md p-2" />
+        </div>
       </div>
-      <div>
-        <label class="font-semibold block mb-2">Imagem do Verso:</label>
-        <input type="file" id="imgVerso" accept="image/*" class="w-full border rounded-md p-2" />
+
+      <div class="bg-gray-100 p-6 rounded shadow-md">
+        <label class="block font-semibold mb-2">Texto da Frente (1 por linha):</label>
+        <textarea class="frente-input w-full border rounded-md p-3 resize-none text-sm" rows="10"></textarea>
+
+        <label class="block font-semibold mt-6 mb-2">Texto do Verso (1 por linha):</label>
+        <textarea class="verso-input w-full border rounded-md p-3 resize-none text-sm" rows="10"></textarea>
+
+        <label class="block font-semibold mt-6 mb-2">Tamanho da fonte:</label>
+        <input id="fontSizeInput" type="number" min="10" max="100" value="50" class="border rounded-md p-2 w-24" />
       </div>
-    </div>
 
-    <div class="bg-gray-100 p-6 rounded shadow-md">
-      <label class="block font-semibold mb-2">Texto da Frente (1 por linha):</label>
-      <textarea class="frente-input w-full border rounded-md p-3 resize-none text-sm" rows="10"></textarea>
+      <div class="flex gap-4">
+        <button onclick="visualizarCards()"
+          class="bg-[#C1FE0E] text-[#494949] px-6 py-3 rounded font-semibold hover:brightness-95 transition-all">
+          Visualizar Prévia dos Cards
+        </button>
 
-      <label class="block font-semibold mt-6 mb-2">Texto do Verso (1 por linha):</label>
-      <textarea class="verso-input w-full border rounded-md p-3 resize-none text-sm" rows="10"></textarea>
+        <button id="btnExportar" disabled onclick="exportarPDFs()"
+          class="bg-[#6900f2] text-white px-6 py-3 rounded font-semibold opacity-50 hover:bg-[#5a00d1] transition-all">
+          Exportar PDFs Separados
+        </button>
+      </div>
+    </main>
 
-      <label class="block font-semibold mt-6 mb-2">Tamanho da fonte:</label>
-      <input id="fontSizeInput" type="number" min="10" max="100" value="50" class="border rounded-md p-2 w-24" />
-    </div>
+  </div>
 
-    <div class="flex gap-4">
-      <button onclick="visualizarCards()"
-        class="bg-[#C1FE0E] text-[#494949] px-6 py-3 rounded font-semibold hover:brightness-95 transition-all">
-        Visualizar Prévia dos Cards
-      </button>
+  <section id="preview-area" class="w-full flex flex-wrap justify-center px-6 py-10"></section>
+  <div id="render-area" class="flex flex-wrap"></div>
 
-      <button id="btnExportar" disabled onclick="exportarPDFs()"
-        class="bg-[#6900f2] text-white px-6 py-3 rounded font-semibold opacity-50 hover:bg-[#5a00d1] transition-all">
-        Exportar PDFs Separados
-      </button>
-    </div>
-  </main>
+  <script>
+    let imagemFrente = null;
+    let imagemVerso = null;
+    const btn = document.getElementById('btnExportar');
+    const DEFAULT_FONT = 50;
+    const PREVIEW_GAP_X = 22; //diminui para menos espaço horizontal
+    const PREVIEW_GAP_Y = 54; //diminui para menos espaço vertical
+    const PREVIEW_GAP_INNER = 18; //espaço entre frente e verso
 
-</div>
+    const fontInput = document.getElementById('fontSizeInput');
+    if (fontInput) fontInput.value = DEFAULT_FONT;
 
-<section id="preview-area" class="w-full flex flex-wrap justify-center px-6 py-10"></section>
-<div id="render-area" class="flex flex-wrap"></div>
-
-<script>
-  let imagemFrente = null;
-  let imagemVerso = null;
-  const btn = document.getElementById('btnExportar');
-  const DEFAULT_FONT = 50; 
-  const PREVIEW_GAP_X = 22; //diminui para menos espaço horizontal
-  const PREVIEW_GAP_Y = 54; //diminui para menos espaço vertical
-  const PREVIEW_GAP_INNER = 18; //espaço entre frente e verso
-
-  const fontInput = document.getElementById('fontSizeInput');
-  if (fontInput) fontInput.value = DEFAULT_FONT;
-
-  function limparNumeracao(textarea) {
-    const linhas = textarea.value.split('\n');
-    const linhasLimpas = linhas.map(l => l.replace(/^\d+\.\s*/, ''));
-    textarea.value = linhasLimpas.join('\n');
-  }
-
-  function lerImagem(file) {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      if (file.type === 'image/svg+xml') {
-        reader.onload = () => resolve({ type: 'svg', content: reader.result });
-        reader.readAsText(file);
-      } else {
-        reader.onload = () => resolve({ type: 'img', content: reader.result });
-        reader.readAsDataURL(file);
-      }
-    });
-  }
-
-  document.getElementById('imgFrente').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    imagemFrente = await lerImagem(file);
-    checkReady();
-  });
-  document.getElementById('imgVerso').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    imagemVerso = await lerImagem(file);
-    checkReady();
-  });
-
-  document.querySelector('.frente-input').addEventListener('input', (e) => limparNumeracao(e.target));
-  document.querySelector('.frente-input').addEventListener('paste', (e) => setTimeout(() => limparNumeracao(e.target), 10));
-  document.querySelector('.verso-input').addEventListener('input', (e) => limparNumeracao(e.target));
-  document.querySelector('.verso-input').addEventListener('paste', (e) => setTimeout(() => limparNumeracao(e.target), 10));
-
-  function checkReady() {
-    if (imagemFrente && imagemVerso) {
-      btn.disabled = false;
-      btn.classList.remove('opacity-50');
-    }
-  }
-
-  function criarCard(texto, imagem, corTexto, isPreview = false) {
-    const wrapper = document.createElement('div');
-    Object.assign(wrapper.style, {
-      position: 'relative',
-      width: '850px',
-      height: '1205px',
-      overflow: 'hidden',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#fff'
-    });
-
-    const container = document.createElement('div');
-    Object.assign(container.style, {
-      position: 'absolute',
-      top: 0, left: 0,
-      width: '850px',
-      height: '1205px',
-      overflow: 'hidden',
-      zIndex: 0
-    });
-
-    if (imagem.type === 'svg') {
-      const div = document.createElement('div');
-      div.innerHTML = imagem.content;
-      const svg = div.querySelector('svg');
-      if (svg) {
-        svg.setAttribute('width', '850');
-        svg.setAttribute('height', '1205');
-        svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-        svg.style.width = '100%';
-        svg.style.height = '100%';
-        svg.style.display = 'block';
-        container.appendChild(svg);
-      }
-    } else {
-      const img = document.createElement('img');
-      img.src = imagem.content;
-      Object.assign(img.style, {
-        width: '100%',
-        height: '100%',
-        objectFit: 'contain',
-        objectPosition: 'center'
-      });
-      container.appendChild(img);
+    function limparNumeracao(textarea) {
+      const linhas = textarea.value.split('\n');
+      const linhasLimpas = linhas.map(l => l.replace(/^\d+\.\s*/, ''));
+      textarea.value = linhasLimpas.join('\n');
     }
 
-    const textoEl = isPreview ? document.createElement('div') : document.createElement('span');
-    textoEl.className = 'card-texto';
-    Object.assign(textoEl.style, {
-      position: 'relative',
-      color: corTexto,
-      zIndex: 10,
-      textAlign: 'center',
-      lineHeight: '1.0',
-      fontSize: (document.getElementById('fontSizeInput')?.value || DEFAULT_FONT) + "px"
-    });
-    textoEl.contentEditable = isPreview;
-    textoEl.innerText = texto;
-
-    if (isPreview) {
-      textoEl.addEventListener('focus', () => {
-        let box = wrapper.querySelector('.font-seletor-box');
-        if (!box) {
-          box = document.createElement('div');
-          box.className = "font-seletor-box";
-          Object.assign(box.style, {
-            position: 'absolute',
-            top: '8px',
-            right: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: '#fff',
-            padding: '8px',
-            borderRadius: '8px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-            zIndex: 20
-          });
-          box.setAttribute("data-ignore", "true");
-
-          const seletor = document.createElement('input');
-          seletor.type = 'number';
-          seletor.min = 10;
-          seletor.max = 150;
-          seletor.value = parseInt(textoEl.style.fontSize) || DEFAULT_FONT;
-          Object.assign(seletor.style, {
-            width: '140px',
-            height: '44px',
-            fontSize: '20px',
-            border: '2px solid #6900f2',
-            borderRadius: '6px',
-            textAlign: 'center'
-          });
-          seletor.addEventListener('input', (e) => {
-            textoEl.style.fontSize = e.target.value + "px";
-          });
-
-          const fechar = document.createElement('button');
-          fechar.innerText = "×";
-          Object.assign(fechar.style, {
-            padding: '0 10px',
-            height: '44px',
-            background: '#ef4444',
-            color: '#fff',
-            borderRadius: '6px',
-            fontSize: '22px',
-            lineHeight: '1',
-            cursor: 'pointer'
-          });
-          fechar.onclick = () => box.remove();
-
-          box.appendChild(seletor);
-          box.appendChild(fechar);
-          wrapper.appendChild(box);
+    function lerImagem(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        if (file.type === 'image/svg+xml') {
+          reader.onload = () => resolve({ type: 'svg', content: reader.result });
+          reader.readAsText(file);
+        } else {
+          reader.onload = () => resolve({ type: 'img', content: reader.result });
+          reader.readAsDataURL(file);
         }
       });
     }
 
-    wrapper.appendChild(container);
-    wrapper.appendChild(textoEl);
-    return wrapper;
-  }
+    document.getElementById('imgFrente').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      imagemFrente = await lerImagem(file);
+      checkReady();
+    });
+    document.getElementById('imgVerso').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      imagemVerso = await lerImagem(file);
+      checkReady();
+    });
 
-  function visualizarCards() {
-    const frente = document.querySelector('.frente-input').value.trim().split('\n').filter(l => l.trim());
-    const verso = document.querySelector('.verso-input').value.trim().split('\n').filter(l => l.trim());
-    const total = Math.min(frente.length, verso.length);
-    const preview = document.getElementById('preview-area');
-    preview.innerHTML = '';
+    document.querySelector('.frente-input').addEventListener('input', (e) => limparNumeracao(e.target));
+    document.querySelector('.frente-input').addEventListener('paste', (e) => setTimeout(() => limparNumeracao(e.target), 10));
+    document.querySelector('.verso-input').addEventListener('input', (e) => limparNumeracao(e.target));
+    document.querySelector('.verso-input').addEventListener('paste', (e) => setTimeout(() => limparNumeracao(e.target), 10));
 
-    const SCALE_PREVIEW = 0.4; // ⇦ cards menores no preview
-
-    for (let i = 0; i < total; i++) {
-      const cardFrente = criarCard(frente[i], imagemFrente, '#7000ed', true);
-      const cardVerso = criarCard(verso[i], imagemVerso, '#ffffff', true);
-
-      // aplica scale menor no preview
-      [cardFrente, cardVerso].forEach(c => {
-        c.style.transform = `scale(${SCALE_PREVIEW})`;
-        c.style.transformOrigin = 'top center';
-      });
-
-      cardFrente.style.marginBottom = PREVIEW_GAP_INNER + 'px';
-
-      const bloco = document.createElement('div');
-      bloco.className = 'preview-bloco';
-      Object.assign(bloco.style, {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        margin: `${PREVIEW_GAP_Y}px ${PREVIEW_GAP_X}px`
-      });
-      bloco.innerHTML = `<p class="font-semibold mb-4" style="margin-bottom:12px">Card ${i + 1}</p>`;
-      bloco.appendChild(cardFrente);
-      bloco.appendChild(cardVerso);
-
-      preview.appendChild(bloco);
+    function checkReady() {
+      if (imagemFrente && imagemVerso) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+      }
     }
-  }
 
-async function exportarPDFs() {
-  const { jsPDF } = window.jspdf;
-  const renderArea = document.getElementById('render-area');
-  renderArea.innerHTML = '';
+    function criarCard(texto, imagem, corTexto, isPreview = false) {
+      const wrapper = document.createElement('div');
+      Object.assign(wrapper.style, {
+        position: 'relative',
+        width: '850px',
+        height: '1205px',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fff'
+      });
+
+      const container = document.createElement('div');
+      Object.assign(container.style, {
+        position: 'absolute',
+        top: 0, left: 0,
+        width: '850px',
+        height: '1205px',
+        overflow: 'hidden',
+        zIndex: 0
+      });
+
+      if (imagem.type === 'svg') {
+        const div = document.createElement('div');
+        div.innerHTML = imagem.content;
+        const svg = div.querySelector('svg');
+        if (svg) {
+          svg.setAttribute('width', '850');
+          svg.setAttribute('height', '1205');
+          svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+          svg.style.width = '100%';
+          svg.style.height = '100%';
+          svg.style.display = 'block';
+          container.appendChild(svg);
+        }
+      } else {
+        const img = document.createElement('img');
+        img.src = imagem.content;
+        Object.assign(img.style, {
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          objectPosition: 'center'
+        });
+        container.appendChild(img);
+      }
+
+      const textoEl = isPreview ? document.createElement('div') : document.createElement('span');
+      textoEl.className = 'card-texto';
+      Object.assign(textoEl.style, {
+        position: 'relative',
+        color: corTexto,
+        zIndex: 10,
+        textAlign: 'center',
+        lineHeight: '1.0',
+        fontSize: (document.getElementById('fontSizeInput')?.value || DEFAULT_FONT) + "px"
+      });
+      textoEl.contentEditable = isPreview;
+      textoEl.innerText = texto;
+
+      if (isPreview) {
+        textoEl.addEventListener('focus', () => {
+          let box = wrapper.querySelector('.font-seletor-box');
+          if (!box) {
+            box = document.createElement('div');
+            box.className = "font-seletor-box";
+            Object.assign(box.style, {
+              position: 'absolute',
+              top: '8px',
+              right: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: '#fff',
+              padding: '8px',
+              borderRadius: '8px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+              zIndex: 20
+            });
+            box.setAttribute("data-ignore", "true");
+
+            const seletor = document.createElement('input');
+            seletor.type = 'number';
+            seletor.min = 10;
+            seletor.max = 150;
+            seletor.value = parseInt(textoEl.style.fontSize) || DEFAULT_FONT;
+            Object.assign(seletor.style, {
+              width: '140px',
+              height: '44px',
+              fontSize: '20px',
+              border: '2px solid #6900f2',
+              borderRadius: '6px',
+              textAlign: 'center'
+            });
+            seletor.addEventListener('input', (e) => {
+              textoEl.style.fontSize = e.target.value + "px";
+            });
+
+            const fechar = document.createElement('button');
+            fechar.innerText = "×";
+            Object.assign(fechar.style, {
+              padding: '0 10px',
+              height: '44px',
+              background: '#ef4444',
+              color: '#fff',
+              borderRadius: '6px',
+              fontSize: '22px',
+              lineHeight: '1',
+              cursor: 'pointer'
+            });
+            fechar.onclick = () => box.remove();
+
+            box.appendChild(seletor);
+            box.appendChild(fechar);
+            wrapper.appendChild(box);
+          }
+        });
+      }
+
+      wrapper.appendChild(container);
+      wrapper.appendChild(textoEl);
+      return wrapper;
+    }
+
+    // tamanhos e espaçamentos da prévia
+    const CARD_W = 850;
+    const CARD_H = 1205;
+    const OUTER_GAP = 32;   // espaço entre blocos (frente+verso)
+    const INNER_GAP = 28;   // espaço entre frente e verso dentro do bloco
+
+    function visualizarCards() {
+  const frente = document.querySelector('.frente-input').value.trim().split('\n').filter(l => l.trim());
+  const verso  = document.querySelector('.verso-input').value.trim().split('\n').filter(l => l.trim());
+  const total  = Math.min(frente.length, verso.length);
 
   const preview = document.getElementById('preview-area');
-  const blocos = preview.querySelectorAll('.preview-bloco');
-  if (blocos.length === 0) {
-    alert("Nenhum card visualizado para exportar.");
-    return;
-  }
+  preview.innerHTML = '';
 
-  // remove controles de fonte da prévia
-  document.querySelectorAll('[data-ignore="true"]').forEach(el => el.remove());
-
-// ==== tamanhos do CARD (px) e alvo físico (mm) ====
-const CARD_W_PX = 850;
-const CARD_H_PX = 1205;
-const CARD_W_MM = 70;   // 7 cm (largura final física)
-const CARD_H_MM = 100;  // 10 cm (altura final física)
-
-
-  // sua margem entre cards (em px) na prancheta raster:
-  const MARGEM_PX = 30;
-
-  // qualidade x tamanho do bitmap
-  const RENDER_SCALE = 2;           // 2 é nítido e leve
-  const JPEG_QUALITY = 0.82;        // 0.75–0.9 bom equilíbrio
-  const PDF_COMPRESS_MODE = 'FAST'; // compressão no jsPDF
-
-  // === grade (px) como você já fazia ===
-  const total = blocos.length;
-  const colunas = Math.ceil(Math.sqrt(total));
-  const linhas  = Math.ceil(total / colunas);
-
-  const canvasW = colunas * (CARD_W_PX + MARGEM_PX) - MARGEM_PX;
-  const canvasH = linhas  * (CARD_H_PX + MARGEM_PX) - MARGEM_PX;
-
-  const gradeFrente = document.createElement('div');
-  const gradeVerso  = document.createElement('div');
-  [gradeFrente, gradeVerso].forEach(grade => {
-    grade.style.position = 'relative';
-    grade.style.width  = `${canvasW}px`;
-    grade.style.height = `${canvasH}px`;
-    grade.style.background = '#fff';
+  // container do preview com gap entre blocos
+  Object.assign(preview.style, {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: `${PREVIEW_GAP_X}px ${PREVIEW_GAP_Y}px`,
+    justifyContent: 'center',
+    alignItems: 'flex-start'
   });
+
+  const SCALE = 0.35;                 // fator de redução na prévia
+  const WRAP_W = 850 * SCALE;         // mesmas dimensões do card, porém já escaladas
+  const WRAP_H = 1205 * SCALE;
+  const INNER_GAP_SCALED = PREVIEW_GAP_INNER * SCALE;
+
+  // helper: cria um wrapper do tamanho reduzido e escala o card dentro
+  const wrapPreview = (cardEl) => {
+    const wrap = document.createElement('div');
+    Object.assign(wrap.style, {
+      position: 'relative',
+      width: `${WRAP_W}px`,
+      height: `${WRAP_H}px`,
+      overflow: 'hidden'
+    });
+    Object.assign(cardEl.style, {
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      transform: `scale(${SCALE})`,
+      transformOrigin: 'top left'
+    });
+    wrap.appendChild(cardEl);
+    return wrap;
+  };
 
   for (let i = 0; i < total; i++) {
-    const bloco = blocos[i];
-    const textos = bloco.querySelectorAll('.card-texto');
-    if (textos.length < 2) continue;
+    const cardFrente = criarCard(frente[i], imagemFrente, '#7000ed', true);
+    const cardVerso  = criarCard(verso[i],  imagemVerso,  '#ffffff', true);
 
-    const frenteTexto = textos[0].innerText.trim();
-    const frenteSize  = textos[0].style.fontSize || `${DEFAULT_FONT}px`;
-    const versoTexto  = textos[1].innerText.trim();
-    const versoSize   = textos[1].style.fontSize || `${DEFAULT_FONT}px`;
-
-    const col = i % colunas;
-    const lin = Math.floor(i / colunas);
-
-    // frente
-    const frente = criarCard(frenteTexto, imagemFrente, '#7000ed');
-    frente.querySelector('.card-texto').style.fontSize = frenteSize;
-    Object.assign(frente.style, {
-      position: 'absolute',
-      left: `${col * (CARD_W_PX + MARGEM_PX)}px`,
-      top:  `${lin * (CARD_H_PX + MARGEM_PX)}px`
+    // bloco do par frente/verso
+    const bloco = document.createElement('div');
+    bloco.className = 'preview-bloco';
+    Object.assign(bloco.style, {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center'
     });
-    gradeFrente.appendChild(frente);
 
-    // verso espelhado horizontalmente
-    const colV = (colunas - 1) - (i % colunas);
-    const verso = criarCard(versoTexto, imagemVerso, '#ffffff');
-    verso.querySelector('.card-texto').style.fontSize = versoSize;
-    Object.assign(verso.style, {
-      position: 'absolute',
-      left: `${colV * (CARD_W_PX + MARGEM_PX)}px`,
-      top:  `${lin * (CARD_H_PX + MARGEM_PX)}px`
-    });
-    gradeVerso.appendChild(verso);
+    const titulo = document.createElement('p');
+    titulo.textContent = `Card ${i + 1}`;
+    titulo.className = 'font-semibold';
+    titulo.style.margin = '0 0 10px 0';
+
+    const frenteWrap = wrapPreview(cardFrente);
+    const versoWrap  = wrapPreview(cardVerso);
+    frenteWrap.style.marginBottom = `${INNER_GAP_SCALED}px`;
+
+    bloco.appendChild(titulo);
+    bloco.appendChild(frenteWrap);
+    bloco.appendChild(versoWrap);
+
+    preview.appendChild(bloco);
   }
-
-  // ---- rasterização hi-dpi (px) ----
-  renderArea.appendChild(gradeFrente);
-  const canvasFrente = await html2canvas(gradeFrente, {
-    scale: RENDER_SCALE, width: canvasW, height: canvasH,
-    backgroundColor: '#FFFFFF', useCORS: true
-  });
-  renderArea.appendChild(gradeVerso);
-  const canvasVerso  = await html2canvas(gradeVerso, {
-    scale: RENDER_SCALE, width: canvasW, height: canvasH,
-    backgroundColor: '#FFFFFF', useCORS: true
-  });
-
-  // ---- mapeia PX -> MM para a página do PDF ----
-  // px/mm baseado no próprio card: 600px ≙ 70mm  =>  pxPorMm = 600/70
-  const PX_POR_MM = CARD_W_PX / CARD_W_MM;
-  const GAP_MM = MARGEM_PX / PX_POR_MM;
-
-  // tamanho físico da página (mm), com espaçamentos em mm
-  const pageWmm = colunas * CARD_W_MM + (colunas - 1) * GAP_MM;
-  const pageHmm = linhas  * CARD_H_MM + (linhas  - 1) * GAP_MM;
-
-  // converte bitmap para JPEG (leve) – o tamanho físico é definido no addImage
-  const frenteJPEG = canvasFrente.toDataURL('image/jpeg', JPEG_QUALITY);
-  const versoJPEG  = canvasVerso.toDataURL('image/jpeg',  JPEG_QUALITY);
-
-  // ---- cria PDFs em milímetros, no tamanho físico correto ----
-  const frentePdf = new jsPDF({ unit: 'mm', format: [pageWmm, pageHmm], compress: true });
-  frentePdf.addImage(frenteJPEG, 'JPEG', 0, 0, pageWmm, pageHmm, undefined, PDF_COMPRESS_MODE);
-
-  const versoPdf  = new jsPDF({ unit: 'mm', format: [pageWmm, pageHmm], compress: true });
-  versoPdf.addImage(versoJPEG,  'JPEG', 0, 0, pageWmm, pageHmm,  undefined, PDF_COMPRESS_MODE);
-
-  frentePdf.save('cards_frente.pdf');
-  versoPdf.save('cards_verso.pdf');
 }
-</script>
+
+
+
+    async function exportarPDFs() {
+      const { jsPDF } = window.jspdf;
+      const renderArea = document.getElementById('render-area');
+      renderArea.innerHTML = '';
+
+      const preview = document.getElementById('preview-area');
+      const blocos = preview.querySelectorAll('.preview-bloco');
+      if (blocos.length === 0) {
+        alert("Nenhum card visualizado para exportar.");
+        return;
+      }
+
+      // remove controles de fonte da prévia
+      document.querySelectorAll('[data-ignore="true"]').forEach(el => el.remove());
+
+      // ==== tamanhos do CARD (px) e alvo físico (mm) ====
+      const CARD_W_PX = 850;
+      const CARD_H_PX = 1205;
+      const CARD_W_MM = 70;   // 7 cm (largura final física)
+      const CARD_H_MM = 100;  // 10 cm (altura final física)
+
+
+      // sua margem entre cards (em px) na prancheta raster:
+      const MARGEM_PX = 30;
+
+      // qualidade x tamanho do bitmap
+      const RENDER_SCALE = 2;           // 2 é nítido e leve
+      const JPEG_QUALITY = 0.82;        // 0.75–0.9 bom equilíbrio
+      const PDF_COMPRESS_MODE = 'FAST'; // compressão no jsPDF
+
+      // === grade (px) como você já fazia ===
+      const total = blocos.length;
+      const colunas = Math.ceil(Math.sqrt(total));
+      const linhas = Math.ceil(total / colunas);
+
+      const canvasW = colunas * (CARD_W_PX + MARGEM_PX) - MARGEM_PX;
+      const canvasH = linhas * (CARD_H_PX + MARGEM_PX) - MARGEM_PX;
+
+      const gradeFrente = document.createElement('div');
+      const gradeVerso = document.createElement('div');
+      [gradeFrente, gradeVerso].forEach(grade => {
+        grade.style.position = 'relative';
+        grade.style.width = `${canvasW}px`;
+        grade.style.height = `${canvasH}px`;
+        grade.style.background = '#fff';
+      });
+
+      for (let i = 0; i < total; i++) {
+        const bloco = blocos[i];
+        const textos = bloco.querySelectorAll('.card-texto');
+        if (textos.length < 2) continue;
+
+        const frenteTexto = textos[0].innerText.trim();
+        const frenteSize = textos[0].style.fontSize || `${DEFAULT_FONT}px`;
+        const versoTexto = textos[1].innerText.trim();
+        const versoSize = textos[1].style.fontSize || `${DEFAULT_FONT}px`;
+
+        const col = i % colunas;
+        const lin = Math.floor(i / colunas);
+
+        // frente
+        const frente = criarCard(frenteTexto, imagemFrente, '#7000ed');
+        frente.querySelector('.card-texto').style.fontSize = frenteSize;
+        Object.assign(frente.style, {
+          position: 'absolute',
+          left: `${col * (CARD_W_PX + MARGEM_PX)}px`,
+          top: `${lin * (CARD_H_PX + MARGEM_PX)}px`
+        });
+        gradeFrente.appendChild(frente);
+
+        // verso espelhado horizontalmente
+        const colV = (colunas - 1) - (i % colunas);
+        const verso = criarCard(versoTexto, imagemVerso, '#ffffff');
+        verso.querySelector('.card-texto').style.fontSize = versoSize;
+        Object.assign(verso.style, {
+          position: 'absolute',
+          left: `${colV * (CARD_W_PX + MARGEM_PX)}px`,
+          top: `${lin * (CARD_H_PX + MARGEM_PX)}px`
+        });
+        gradeVerso.appendChild(verso);
+      }
+
+      // ---- rasterização hi-dpi (px) ----
+      renderArea.appendChild(gradeFrente);
+      const canvasFrente = await html2canvas(gradeFrente, {
+        scale: RENDER_SCALE, width: canvasW, height: canvasH,
+        backgroundColor: '#FFFFFF', useCORS: true
+      });
+      renderArea.appendChild(gradeVerso);
+      const canvasVerso = await html2canvas(gradeVerso, {
+        scale: RENDER_SCALE, width: canvasW, height: canvasH,
+        backgroundColor: '#FFFFFF', useCORS: true
+      });
+
+      // ---- mapeia PX -> MM para a página do PDF ----
+      // px/mm baseado no próprio card: 600px ≙ 70mm  =>  pxPorMm = 600/70
+      const PX_POR_MM = CARD_W_PX / CARD_W_MM;
+      const GAP_MM = MARGEM_PX / PX_POR_MM;
+
+      // tamanho físico da página (mm), com espaçamentos em mm
+      const pageWmm = colunas * CARD_W_MM + (colunas - 1) * GAP_MM;
+      const pageHmm = linhas * CARD_H_MM + (linhas - 1) * GAP_MM;
+
+      // converte bitmap para JPEG (leve) – o tamanho físico é definido no addImage
+      const frenteJPEG = canvasFrente.toDataURL('image/jpeg', JPEG_QUALITY);
+      const versoJPEG = canvasVerso.toDataURL('image/jpeg', JPEG_QUALITY);
+
+      // ---- cria PDFs em milímetros, no tamanho físico correto ----
+      const frentePdf = new jsPDF({ unit: 'mm', format: [pageWmm, pageHmm], compress: true });
+      frentePdf.addImage(frenteJPEG, 'JPEG', 0, 0, pageWmm, pageHmm, undefined, PDF_COMPRESS_MODE);
+
+      const versoPdf = new jsPDF({ unit: 'mm', format: [pageWmm, pageHmm], compress: true });
+      versoPdf.addImage(versoJPEG, 'JPEG', 0, 0, pageWmm, pageHmm, undefined, PDF_COMPRESS_MODE);
+
+      frentePdf.save('cards_frente.pdf');
+      versoPdf.save('cards_verso.pdf');
+    }
+  </script>
 
 </body>
 
