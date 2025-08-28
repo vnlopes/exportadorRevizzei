@@ -142,10 +142,10 @@
   let imagemFrente = null;
   let imagemVerso = null;
   const btn = document.getElementById('btnExportar');
-  const DEFAULT_FONT = 30;
-  const PREVIEW_GAP_X = 32;
-  const PREVIEW_GAP_Y = 64;
-  const PREVIEW_GAP_INNER = 28;
+  const DEFAULT_FONT = 50; 
+  const PREVIEW_GAP_X = 22; //diminui para menos espaço horizontal
+  const PREVIEW_GAP_Y = 54; //diminui para menos espaço vertical
+  const PREVIEW_GAP_INNER = 18; //espaço entre frente e verso
 
   const fontInput = document.getElementById('fontSizeInput');
   if (fontInput) fontInput.value = DEFAULT_FONT;
@@ -198,8 +198,8 @@
     const wrapper = document.createElement('div');
     Object.assign(wrapper.style, {
       position: 'relative',
-      width: '600px',
-      height: '850px',
+      width: '850px',
+      height: '1205px',
       overflow: 'hidden',
       display: 'flex',
       alignItems: 'center',
@@ -211,8 +211,8 @@
     Object.assign(container.style, {
       position: 'absolute',
       top: 0, left: 0,
-      width: '600px',
-      height: '850px',
+      width: '850px',
+      height: '1205px',
       overflow: 'hidden',
       zIndex: 0
     });
@@ -222,8 +222,8 @@
       div.innerHTML = imagem.content;
       const svg = div.querySelector('svg');
       if (svg) {
-        svg.setAttribute('width', '600');
-        svg.setAttribute('height', '850');
+        svg.setAttribute('width', '850');
+        svg.setAttribute('height', '1205');
         svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
         svg.style.width = '100%';
         svg.style.height = '100%';
@@ -326,7 +326,7 @@
     const preview = document.getElementById('preview-area');
     preview.innerHTML = '';
 
-    const SCALE_PREVIEW = 0.8; // ⇦ cards menores no preview
+    const SCALE_PREVIEW = 0.4; // ⇦ cards menores no preview
 
     for (let i = 0; i < total; i++) {
       const cardFrente = criarCard(frente[i], imagemFrente, '#7000ed', true);
@@ -371,11 +371,12 @@ async function exportarPDFs() {
   // remove controles de fonte da prévia
   document.querySelectorAll('[data-ignore="true"]').forEach(el => el.remove());
 
-  // ==== tamanhos do CARD (px) e alvo físico (mm) ====
-  const CARD_W_PX = 600;
-  const CARD_H_PX = 850;
-  const CARD_W_MM = 70;   // 7 cm
-  const CARD_H_MM = 100;  // 10 cm
+// ==== tamanhos do CARD (px) e alvo físico (mm) ====
+const CARD_W_PX = 850;
+const CARD_H_PX = 1205;
+const CARD_W_MM = 70;   // 7 cm (largura final física)
+const CARD_H_MM = 100;  // 10 cm (altura final física)
+
 
   // sua margem entre cards (em px) na prancheta raster:
   const MARGEM_PX = 30;
